@@ -7,12 +7,12 @@ DEBUG_FLAG =
 endif
 
 CC = gcc
-CFLAGS = $(DEBUG_FLAG)
+CFLAGS = $(DEBUG_FLAG) -O3
 
 all: test
 
 test: test.o run_test.o rdpmc.o libharness.a
-	$(CC) -o $@ $^ -lrt
+	$(CC) -o $@ $^ -lrt -lm
 
 libharness.a: harness.o
 	ar -rcs $@ $^

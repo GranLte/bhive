@@ -146,46 +146,80 @@ int test(char *code_to_test, size_t code_size, unsigned int unroll_factor) {
 }
 
 int main(int argc, char **argv){
-  char *code_hex = argv[1];
-  unsigned int unroll_factor1 = atoi(argv[2]);
-  unsigned int unroll_factor2 = atoi(argv[3]);
-  size_t code_size = strlen(code_hex)/2;
-  char *code_to_test = hex2bin(code_hex);
-  float inverse_throughputs[NUM_MEASUREMENTS] = {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f};
-  size_t failed_attempts = 0;
-  for (size_t i = 0; i < NUM_MEASUREMENTS; i++){
-    // measure cycles(b, n1)
-    int min_cycle_unroll1 = test(code_to_test, code_size, unroll_factor1);
-    if (min_cycle_unroll1 < 0) {
-      failed_attempts++;
-      continue;
-    }
-    usleep(1);
-    // measure cycles(b, n2)
-    int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2);
-    if (min_cycle_unroll2 < 0) {
-      failed_attempts++;
-      continue;
-    }
-    usleep(1);
-    // inverse throughput(b) = (cycles(b, n2) − cycles(b, n1 )) / (n2 - n1)
-    float inverse_throughput = (min_cycle_unroll2 - min_cycle_unroll1) / (float)(unroll_factor2 - unroll_factor1);
-    LOG("throughput at %d is %f\n", i, inverse_throughput);
-    inverse_throughputs[i] = inverse_throughput;
+
+  if (argc != 3) {
+        fprintf(stderr, "Usage: %s <input_file> <output_file>\n", argv[0]);
+        return 1;
+  }
+  
+  char *input_filename = argv[1];
+  char *output_filename = argv[2];
+
+  FILE *input_file = fopen(input_filename, "r");
+  if (!input_file) {
+      perror("Failed to open input file");
+      return 1;
   }
 
-  if (failed_attempts > NUM_MEASUREMENTS / 2) {
-    LOG("failed to measure the throughput\n");
-    return 1;
+  FILE *output_file = fopen(output_filename, "w");
+  if (!output_file) {
+      perror("Failed to open output file");
+      fclose(input_file);
+      return 1;
   }
 
-  // find the minimum inverse throughput that is non-negative
-  float min_inverse_throughput = -1.0f;
-  for (size_t i = 0; i < NUM_MEASUREMENTS; i++){
-    if (inverse_throughputs[i] > 0.0f && (min_inverse_throughput < 0.0f || inverse_throughputs[i] < min_inverse_throughput)){
-      min_inverse_throughput = inverse_throughputs[i];
-    }
-  }
-  LOG("result throughput is %f failed %d times \n", min_inverse_throughput, failed_attempts);
+  char line[2048];
+  
+
+  while (fgets(line, sizeof(line), input_file)) {
+        char *code_hex = strtok(line, " ");
+        unsigned int unroll_factor1 = atoi(strtok(NULL, " "));
+        unsigned int unroll_factor2 = atoi(strtok(NULL, "\n"));
+
+        size_t code_size = strlen(code_hex) / 2;
+        char *code_to_test = hex2bin(code_hex);
+
+        // ... [Rest of the code remains the same]
+        float inverse_throughputs[NUM_MEASUREMENTS] = {-1.0f, -1.0f, -1.0f, -1.0f, -1.0f};
+        size_t failed_attempts = 0;
+        for (size_t i = 0; i < NUM_MEASUREMENTS; i++){
+          // measure cycles(b, n1)
+          int min_cycle_unroll1 = test(code_to_test, code_size, unroll_factor1);
+          if (min_cycle_unroll1 < 0) {
+            failed_attempts++;
+            continue;
+          }
+          usleep(1);
+          // measure cycles(b, n2)
+          int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2);
+          if (min_cycle_unroll2 < 0) {
+            failed_attempts++;
+            continue;
+          }
+          usleep(1);
+          // inverse throughput(b) = (cycles(b, n2) − cycles(b, n1 )) / (n2 - n1)
+          float inverse_throughput = (min_cycle_unroll2 - min_cycle_unroll1) / (float)(unroll_factor2 - unroll_factor1);
+          LOG("throughput at %ld is %f\n", i, inverse_throughput);
+          inverse_throughputs[i] = inverse_throughput;
+        }
+
+        if (failed_attempts > NUM_MEASUREMENTS / 2) {
+          LOG("failed to measure the throughput\n");
+          return 1;
+        }
+
+        // find the minimum inverse throughput that is non-negative
+        float min_inverse_throughput = -1.0f;
+        for (size_t i = 0; i < NUM_MEASUREMENTS; i++){
+          if (inverse_throughputs[i] > 0.0f && (min_inverse_throughput < 0.0f || inverse_throughputs[i] < min_inverse_throughput)){
+            min_inverse_throughput = inverse_throughputs[i];
+          }
+        }
+        LOG("result throughput is %f failed %ld times \n", min_inverse_throughput, failed_attempts);
+        // Instead of using LOG, write the results directly to the output file
+        fprintf(output_file, "%s  %f  %ld\n", code_hex, min_inverse_throughput, failed_attempts);
+
+        usleep(10);
+    } // while get line
   return 0;
 }

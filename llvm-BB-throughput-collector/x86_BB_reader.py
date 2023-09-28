@@ -15,7 +15,7 @@ def compile_llvm_to_x86_asm(llvm_file_path):
     # Step 1: Compile LLVM IR to x86 assembly
     try:
         asm_file_path = llvm_file_path.replace(".ll", ".s")
-        subprocess.run(['llc', '-O0', llvm_file_path, '-o', asm_file_path], check=True)
+        subprocess.run(['llc', '-march=x86-64', '-O0', llvm_file_path, '-o', asm_file_path], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Compilation Error: {e}")
         return []
@@ -48,10 +48,9 @@ def compile_llvm_to_x86_asm(llvm_file_path):
                 basic_blocks.append(block)
             block = [stripped_line]
         elif block and stripped_line.startswith(('j', 'ret')):  # Jump or return instructions indicating end of a basic block
-            block.append(stripped_line)
             basic_blocks.append(block)
             block = []
-        elif block and not stripped_line.startswith(('.size', '.cfi', '.type', '.p2align', '.globl')):  # Exclude certain directives but not labels
+        elif block and not stripped_line.startswith(('.size', '.cfi', '.type', '.p2align', '.globl', 'call')):  # Exclude certain directives but not labels
             block.append(stripped_line)
 
     # Add any remaining block

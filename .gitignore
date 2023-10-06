@@ -1,2 +1,7 @@
 *.o
 *.a
+__pycache__
+*.txt
+*.bin
+test
+*.vscode

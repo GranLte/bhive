@@ -2,6 +2,10 @@ from llvm_BB_reader import read_llvm_ir_file_filtered
 from x86_BB_reader import compile_llvm_to_x86_asm, read_x86_BB
 import subprocess
 import os
+import argparse
+
+DEBUG = 1
+RELEASE = 2
 
 def pretty_print(result_list):
     """
@@ -22,10 +26,10 @@ def pretty_print(result_list):
         print("=" * 100)
 
 
-def main():
+def main(llvm_file_path, result_option, result_output):
     # Provide the path to your .ll file
     llvm_file_path = "/u9/z277zhu/granLte/bhive/tests/harness_comment.ll"
-    output_file_path = "output.txt"  # TODO: Update the output path as required
+    tmp_file_x86_BBs = "tmp_output.txt"  # TODO: Update the output path as required
     # 1. Read LLVM IR File
     llvm_BB_map = read_llvm_ir_file_filtered(llvm_file_path)
 
@@ -41,13 +45,8 @@ def main():
         if key in x86_BB_map:
             result_list.append((key, value, x86_BB_map[key]))
 
-    # 5. Pretty print the result
-    pretty_print(result_list)
-
-    print("Total number of basic blocks:", len(result_list))
-
     # 5. Write to file
-    with open(output_file_path, 'w') as f:
+    with open(tmp_file_x86_BBs, 'w') as f:
         for key, _, x86_value in result_list:
             f.write(f"{key}\n")
             for instr in x86_value:   # Assuming x86_value is a list of instructions
@@ -55,14 +54,15 @@ def main():
     
     # 6. Invoke the Bash Script
     bash_script_path = "convertToHex.sh"
-    processed_output_path = "opcodes.txt"
-    subprocess.run(['bash', bash_script_path, output_file_path, processed_output_path])
+    tmp_processed_hex_file = "tmp_opcodes.txt"
+    tmp_measure_input = "tmp_opcodes_unroll_factors.txt"
+    subprocess.run(['bash', bash_script_path, tmp_file_x86_BBs, tmp_processed_hex_file])
 
     # Ensure the opcodes.txt is created and not empty
-    if os.path.getsize(processed_output_path) > 0:
+    if os.path.getsize(tmp_processed_hex_file) > 0:
         
         # 7. Proceed the opcodes.txt
-        with open(processed_output_path, 'r') as f_opcodes, open("final_output.txt", "w") as f_final:
+        with open(tmp_processed_hex_file, 'r') as f_opcodes, open(tmp_measure_input, "w") as f_final:
             for line in f_opcodes:
                 bb_index, opcodes = line.strip().split(' ', 1)
                 opcode_len = len(opcodes) // 2  # As 2 hex chars represent 1 byte
@@ -78,7 +78,74 @@ def main():
                 # Append the unroll factors and write to the final output
                 f_final.write(f"{bb_index} {opcodes} {unroll_factors}\n")
     
+    # 8. invoke measurement process to get throughput for each BB
+    measurement_script_path = "../timing-harness/test"
+    tmp_measure_output = "tmp_measure_output.txt"
+    subprocess.run([measurement_script_path, tmp_measure_input, tmp_measure_output])
+    # 9. merge measurement output with final output and result_list based on option debug/release
+    result_option = RELEASE
+    with open(result_output, 'w') as f_result_output:
+        if result_option == DEBUG:
+            with open(tmp_measure_output, 'r') as f_measurement_output:
+                # Reading all the lines of tmp_measure_output in a list
+                measurement_lines = f_measurement_output.readlines()
+                
+                # Using zip to iterate over measurement_lines and result_list together
+                for line, (bb_name, llvm_instructions, x86_instructions) in zip(measurement_lines, result_list):
+                    elements = line.strip().split('  ')
+                    hex_code = elements[0]
+                    throughput = elements[1]
+
+                    # Write to the result output
+                    f_result_output.write(f"BB Name: {bb_name}\n")
+                    f_result_output.write("-" * 50 + "\n")
+                    f_result_output.write("LLVM Instructions:\n")
+                    for instr in llvm_instructions:
+                        f_result_output.write(f"{instr}\n")
+                    f_result_output.write("\nX86 Instructions:\n")
+                    for instr in x86_instructions:
+                        f_result_output.write(f"{instr}\n")
+                    f_result_output.write(f"\nHex Code: {hex_code}\n")
+                    f_result_output.write(f"Inverse Throughput: {throughput}\n")
+                    f_result_output.write("=" * 100 + "\n\n")
+        elif result_option == RELEASE:
+            with open(tmp_measure_output, 'r') as f_measurement_output:
+                # Reading all the lines of tmp_measure_output in a list
+                measurement_lines = f_measurement_output.readlines()
+                
+                # Using zip to iterate over measurement_lines and result_list together
+                for line, (bb_name, _, _) in zip(measurement_lines, result_list):
+                    elements = line.strip().split('  ')
+                    hex_code = elements[0]
+                    throughput = elements[1]
+
+                    # Write to the result output
+                    f_result_output.write(f"{bb_name}, {throughput}\n")
+    # clean up temp files
+    temporary_files = [
+        asm_file_path,
+        tmp_file_x86_BBs,
+        tmp_processed_hex_file,
+        tmp_measure_input,
+        tmp_measure_output
+    ]
+
+    for tmp_file in temporary_files:
+        try:
+            os.remove(tmp_file)
+        except FileNotFoundError:
+            print(f"Warning: Temporary file {tmp_file} not found for removal.")
+
+
     print("Processing completed.")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Process an LLVM IR file and generate throughput measurement outputs.")
+    parser.add_argument("llvm_file", help="Path to the LLVM IR file to process.")
+    parser.add_argument("output_file", help="Path for the final output.")
+    parser.add_argument("mode", choices=['DEBUG', 'RELEASE'], help="Operating mode: DEBUG or RELEASE.")
+
+    args = parser.parse_args()
+    mode = DEBUG if args.mode == 'DEBUG' else RELEASE
+    
+    main(args.llvm_file, mode, args.output_file)

@@ -108,7 +108,7 @@ def pretty_print_dictionary(BBs):
         print('---')
     print(f"Total number of basic blocks: {len(BBs)}\n")
 
-# Test the function
-asm_file = compile_llvm_to_x86_asm("/u9/z277zhu/granLte/bhive/tests/harness_comment.ll")
-BBs = read_x86_BB(asm_file)
-pretty_print_dictionary(BBs)
+# # Test the function
+# asm_file = compile_llvm_to_x86_asm("/u9/z277zhu/granLte/bhive/tests/harness_comment.ll")
+# BBs = read_x86_BB(asm_file)
+# pretty_print_dictionary(BBs)

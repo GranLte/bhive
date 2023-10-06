@@ -101,6 +101,6 @@ def pretty_print_dictionary(BBs):
     print(f"Total number of basic blocks: {len(BBs)}\n")
 
 
-# Test the function
-BBs = read_llvm_ir_file_filtered("/u9/z277zhu/granLte/bhive/tests/harness_comment.ll")
-pretty_print_dictionary(BBs)
+# # Test the function
+# BBs = read_llvm_ir_file_filtered("/u9/z277zhu/granLte/bhive/tests/harness_comment.ll")
+# pretty_print_dictionary(BBs)

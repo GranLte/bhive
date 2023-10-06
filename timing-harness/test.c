@@ -172,9 +172,17 @@ int main(int argc, char **argv){
   
 
   while (fgets(line, sizeof(line), input_file)) {
-        char *code_hex = strtok(line, " ");
+
+        unsigned int BB_index = atoi(strtok(line, " "));
+        char *code_hex = strtok(NULL, " ");
         unsigned int unroll_factor1 = atoi(strtok(NULL, " "));
         unsigned int unroll_factor2 = atoi(strtok(NULL, "\n"));
+
+        if (code_hex[0] == '0') {
+          fprintf(output_file, "%s  %f  %ld\n", code_hex, 0.0, 0);
+          usleep(100);
+          continue;
+        }
 
         size_t code_size = strlen(code_hex) / 2;
         char *code_to_test = hex2bin(code_hex);
@@ -189,23 +197,23 @@ int main(int argc, char **argv){
             failed_attempts++;
             continue;
           }
-          usleep(1);
+          usleep(100);
           // measure cycles(b, n2)
           int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2);
           if (min_cycle_unroll2 < 0) {
             failed_attempts++;
             continue;
           }
-          usleep(1);
+          usleep(100);
           // inverse throughput(b) = (cycles(b, n2) − cycles(b, n1 )) / (n2 - n1)
           float inverse_throughput = (min_cycle_unroll2 - min_cycle_unroll1) / (float)(unroll_factor2 - unroll_factor1);
           LOG("throughput at %ld is %f\n", i, inverse_throughput);
           inverse_throughputs[i] = inverse_throughput;
         }
 
-        if (failed_attempts > NUM_MEASUREMENTS / 2) {
+        if (failed_attempts > NUM_MEASUREMENTS / 2 + 1) {
           LOG("failed to measure the throughput\n");
-          return 1;
+          // return 1;
         }
 
         // find the minimum inverse throughput that is non-negative
@@ -219,7 +227,7 @@ int main(int argc, char **argv){
         // Instead of using LOG, write the results directly to the output file
         fprintf(output_file, "%s  %f  %ld\n", code_hex, min_inverse_throughput, failed_attempts);
 
-        usleep(10);
+        usleep(100);
     } // while get line
   return 0;
 }

@@ -3,7 +3,7 @@
 ifeq ($(NDEBUG), 1)
 DEBUG_FLAG = -DNDEBUG=1
 else
-DEBUG_FLAG =
+DEBUG_FLAG = -DNDEBUG=1
 endif
 
 CC = gcc
@@ -15,7 +15,7 @@ test: test.o run_test.o rdpmc.o libharness.a
 	$(CC) -o $@ $^ -lrt -lm
 
 libharness.a: harness.o
-	ar -rcs $@ $^
+	ar -rcs $@ $^ 
 
 harness.o: harness.c harness.h
 

@@ -19,6 +19,7 @@
 #include "harness.h"
 
 #define NUM_MEASUREMENTS 5
+#define SLEEP_TIME 100
 
 #ifndef NDEBUG
 #define LOG(args...) printf(args)
@@ -180,7 +181,7 @@ int main(int argc, char **argv){
 
         if (code_hex[0] == '0') {
           fprintf(output_file, "%s  %f  %ld\n", code_hex, 0.0, 0);
-          usleep(100);
+          usleep(SLEEP_TIME);
           continue;
         }
 
@@ -197,14 +198,14 @@ int main(int argc, char **argv){
             failed_attempts++;
             continue;
           }
-          usleep(100);
+          usleep(SLEEP_TIME);
           // measure cycles(b, n2)
           int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2);
           if (min_cycle_unroll2 < 0) {
             failed_attempts++;
             continue;
           }
-          usleep(100);
+          usleep(SLEEP_TIME);
           // inverse throughput(b) = (cycles(b, n2) − cycles(b, n1 )) / (n2 - n1)
           float inverse_throughput = (min_cycle_unroll2 - min_cycle_unroll1) / (float)(unroll_factor2 - unroll_factor1);
           LOG("throughput at %ld is %f\n", i, inverse_throughput);
@@ -227,7 +228,7 @@ int main(int argc, char **argv){
         // Instead of using LOG, write the results directly to the output file
         fprintf(output_file, "%s  %f  %ld\n", code_hex, min_inverse_throughput, failed_attempts);
 
-        usleep(100);
+        usleep(SLEEP_TIME);
     } // while get line
   return 0;
 }

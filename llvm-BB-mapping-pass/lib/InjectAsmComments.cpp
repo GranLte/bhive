@@ -24,11 +24,10 @@ bool InjectAsmComments::runOnModule(Module &M) {
     for (BasicBlock &BB : F) {
         if (Visited.count(&BB)) continue;
         Visited.insert(&BB);
-        llvm::errs() << "Processing BB: " << BB.getName() << "\n";
         // Assign a name to the basic block if it doesn't have one
-        if (!BB.hasName()) {
-            BB.setName("BB_" + Twine(BBNum++));  // e.g., BB_0, BB_1, BB_2, ...
-        }
+
+        BB.setName("BB_" + Twine(BBNum++));  // e.g., BB_0, BB_1, BB_2, ...
+
         IRBuilder<> Builder(&BB);
 
         // Move the insertion point to the start of the basic block

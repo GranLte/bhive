@@ -43,8 +43,7 @@ def apply_upgrades(old_measurements, new_measurements):
     return updated_measurements
 
 def main(llvm_file_path, result_option, result_output):
-    # Provide the path to your .ll file
-    llvm_file_path = "/u9/z277zhu/granLte/bhive/tests/harness_comment.ll"
+
     tmp_file_x86_BBs = "tmp_output.txt"  # TODO: Update the output path as required
     # 1. Read LLVM IR File
     llvm_BB_map = read_llvm_ir_file_filtered(llvm_file_path)
@@ -193,12 +192,19 @@ def main(llvm_file_path, result_option, result_output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process an LLVM IR file and generate throughput measurement outputs.")
     parser.add_argument("llvm_file", help="Path to the LLVM IR file to process.")
-    parser.add_argument("output_file", help="Path for the final output.")
     parser.add_argument("mode", choices=['DEBUG', 'RELEASE', 'UPGRADE'], help="Operating mode: DEBUG or RELEASE.")
+    parser.add_argument("output_file", help="Path for the final output. If not provided, it will be derived from the input file.", default=None)
 
     args = parser.parse_args()
     mode_mapping = {'DEBUG': DEBUG, 'RELEASE': RELEASE, 'UPGRADE': UPGRADE}
     mode = mode_mapping.get(args.mode, DEBUG)
+    # Set output file only if it's not provided
+    if args.output_file is None:
+        output_file = f"{os.path.splitext(args.llvm_file)[0]}.perf"
+    else:
+        output_file = args.output_file
+    
     print(f"Operating mode: {args.mode}")
+    print(f"Output file: {output_file}")
 
-    main(args.llvm_file, mode, args.output_file)
+    main(args.llvm_file, mode, output_file)

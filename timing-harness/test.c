@@ -19,7 +19,7 @@
 #include "harness.h"
 
 #define NUM_MEASUREMENTS 5
-#define SLEEP_TIME 100
+#define SLEEP_TIME 10
 
 #ifndef NDEBUG
 #define LOG(args...) printf(args)
@@ -63,10 +63,8 @@ int is_ideal_execution(struct pmc_counters *counter){
  * 
  * @return Minimum cycle count observed for ideal executions or -1 if the measurement is deemed unreliable.
  */
-int test(char *code_to_test, size_t code_size, unsigned int unroll_factor) {
-    // Allocate shared memory for the test, splitting it into 3 pages:
-    // 1st page is for the test code, rest for recording results.
-    int shm_fd = create_shm_fd("shm-path");
+int test(char *code_to_test, size_t code_size, unsigned int unroll_factor, int shm_fd) {
+    
 
     // Measure the code's performance and collect hardware counters.
     // This includes counts of core cycles, cache misses, and context switches.
@@ -170,6 +168,9 @@ int main(int argc, char **argv){
   }
 
   char line[2048];
+  // Allocate shared memory for the test, splitting it into 3 pages:
+  // 1st page is for the test code, rest for recording results.
+  int shm_fd = create_shm_fd("shm-path");
   
 
   while (fgets(line, sizeof(line), input_file)) {
@@ -180,7 +181,7 @@ int main(int argc, char **argv){
         unsigned int unroll_factor2 = atoi(strtok(NULL, "\n"));
 
         if (code_hex[0] == '0') {
-          fprintf(output_file, "%s  %f  %ld\n", code_hex, 0.0, 0);
+          fprintf(output_file, "%d  %s  %f  %ld\n", BB_index, code_hex, 0.0, 0);
           usleep(SLEEP_TIME);
           continue;
         }
@@ -193,14 +194,14 @@ int main(int argc, char **argv){
         size_t failed_attempts = 0;
         for (size_t i = 0; i < NUM_MEASUREMENTS; i++){
           // measure cycles(b, n1)
-          int min_cycle_unroll1 = test(code_to_test, code_size, unroll_factor1);
+          int min_cycle_unroll1 = test(code_to_test, code_size, unroll_factor1, shm_fd);
           if (min_cycle_unroll1 < 0) {
             failed_attempts++;
             continue;
           }
           usleep(SLEEP_TIME);
           // measure cycles(b, n2)
-          int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2);
+          int min_cycle_unroll2 = test(code_to_test, code_size, unroll_factor2, shm_fd);
           if (min_cycle_unroll2 < 0) {
             failed_attempts++;
             continue;
@@ -226,7 +227,7 @@ int main(int argc, char **argv){
         }
         LOG("result throughput is %f failed %ld times \n", min_inverse_throughput, failed_attempts);
         // Instead of using LOG, write the results directly to the output file
-        fprintf(output_file, "%s  %f  %ld\n", code_hex, min_inverse_throughput, failed_attempts);
+        fprintf(output_file, "%d  %s  %f  %ld\n", BB_index, code_hex, min_inverse_throughput, failed_attempts);
 
         usleep(SLEEP_TIME);
     } // while get line

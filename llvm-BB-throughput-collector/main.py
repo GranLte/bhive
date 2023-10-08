@@ -8,24 +8,6 @@ DEBUG = 1
 RELEASE = 2
 UPGRADE = 3
 
-def pretty_print(result_list):
-    """
-    Pretty prints the result list.
-
-    Parameters:
-    - result_list: List of tuples containing (BB_name, llvm_instructions, x86_instructions).
-    """
-    for bb_name, llvm_instructions, x86_instructions in result_list:
-        print("BB Name:", bb_name)
-        print("-" * 50)
-        print("LLVM Instructions:")
-        for instr in llvm_instructions:
-            print(instr)
-        print("\nX86 Instructions:")
-        for instr in x86_instructions:
-            print(instr)
-        print("=" * 100)
-
 
 def apply_upgrades(old_measurements, new_measurements):
     updated_measurements = {}
@@ -55,14 +37,14 @@ def main(llvm_file_path, result_option, result_output):
     x86_BB_map = read_x86_BB(asm_file_path)
 
     # 4. Iterate and match
-    result_list = []
+    result_list = {}
     for key, value in llvm_BB_map.items():
         if key in x86_BB_map:
-            result_list.append((key, value, x86_BB_map[key]))
+            result_list[key] = (value, x86_BB_map[key])
 
     # 5. Write to file
     with open(tmp_file_x86_BBs, 'w') as f:
-        for key, _, x86_value in result_list:
+        for key, (_, x86_value)in result_list.items():
             f.write(f"{key}\n")
             for instr in x86_value:   # Assuming x86_value is a list of instructions
                 f.write(f"{instr}\n")
@@ -113,10 +95,13 @@ def main(llvm_file_path, result_option, result_output):
                 measurement_lines = f_measurement_output.readlines()
                 
                 # Using zip to iterate over measurement_lines and result_list together
-                for line, (bb_name, llvm_instructions, x86_instructions) in zip(measurement_lines, result_list):
+                for line in measurement_lines:
                     elements = line.strip().split('  ')
-                    hex_code = elements[0]
-                    throughput = elements[1]
+                    bb_name = "BB_" + elements[0]
+                    hex_code = elements[1]
+                    throughput = elements[2]
+
+                    (llvm_instructions, x86_instructions) = result_list[bb_name]
 
                     # Write to the result output
                     f_result_output.write(f"BB Name: {bb_name}\n")
@@ -136,22 +121,23 @@ def main(llvm_file_path, result_option, result_output):
                 measurement_lines = f_measurement_output.readlines()
                 
                 # Using zip to iterate over measurement_lines and result_list together
-                for line, (bb_name, _, _) in zip(measurement_lines, result_list):
+                for line in measurement_lines:
                     elements = line.strip().split('  ')
-                    throughput = elements[1]
+                    bb_name = "BB_" + elements[0]
+                    throughput = elements[2]
 
                     # Write to the result output
                     f_result_output.write(f"{bb_name}, {throughput}\n")
         elif result_option == UPGRADE:
-            print("here")
             with open(tmp_measure_output, 'r') as f_measurement_output:
                 # Reading all the lines of tmp_measure_output in a list
                 measurement_lines = f_measurement_output.readlines()
 
                 new_measurements = {}
-                for line, (bb_name, _, _) in zip(measurement_lines, result_list):
+                for line in measurement_lines:
                     elements = line.strip().split('  ')
-                    throughput = float(elements[1])
+                    bb_name = "BB_" + elements[0]
+                    throughput = float(elements[2])
                     new_measurements[bb_name] = throughput
 
                 # Reading all the lines of upgrade_file_path in a list
@@ -180,11 +166,11 @@ def main(llvm_file_path, result_option, result_output):
         tmp_measure_output
     ]
 
-    for tmp_file in temporary_files:
-        try:
-            os.remove(tmp_file)
-        except FileNotFoundError:
-            print(f"Warning: Temporary file {tmp_file} not found for removal.")
+    # for tmp_file in temporary_files:
+    #     try:
+    #         os.remove(tmp_file)
+    #     except FileNotFoundError:
+    #         print(f"Warning: Temporary file {tmp_file} not found for removal.")
 
 
     print("Processing completed.")

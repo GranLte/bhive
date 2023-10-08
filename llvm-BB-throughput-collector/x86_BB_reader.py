@@ -66,7 +66,9 @@ def read_x86_BB(asm_file_path):
                         print(block)
                         return {}
                 else:
-                    bb_to_asm_map[current_bb_name]=block
+                    # Check for the '.L.str.*' pattern in the block
+                    if not any(re.search(r'\.L\.str\.\d+', b_line) for b_line in block):
+                        bb_to_asm_map[current_bb_name] = block
                 current_bb_name = None
             block = [stripped_line]
             can_proceed = True
@@ -78,7 +80,7 @@ def read_x86_BB(asm_file_path):
                 continue
             current_bb_name = stripped_line.split(' ')[-1]  # Extract BB_name
             block.append(stripped_line)
-        elif can_proceed and block and not (stripped_line.startswith(('.cfi', 'call', 'j', 'ret'))):  # Exclude certain directives but not labels
+        elif can_proceed and block and not (stripped_line.startswith(('.', '.cfi', 'call', 'j', 'ret'))):  # Exclude certain directives but not labels
             block.append(stripped_line)
 
     # Add any remaining block

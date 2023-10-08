@@ -53,7 +53,7 @@ done < "$INPUT_FILE"
 # Process the last BB if it exists
 if [ "$IN_BB" -eq 1 ]; then
     # Pass the block to llvm-mc to generate the object file
-    llvm-mc -filetype=obj <<< "$BB_CONTENT" > "$TEMP_FILE"
+    llvm-mc-14 -filetype=obj <<< "$BB_CONTENT" > "$TEMP_FILE" 2> /dev/null
 
     echo -n "$BB_INDEX " >> "$OUTPUT_FILE"
     # Extract opcodes and append to the output file

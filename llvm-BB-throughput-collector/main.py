@@ -25,8 +25,9 @@ def apply_upgrades(old_measurements, new_measurements):
     return updated_measurements
 
 def main(llvm_file_path, result_option, result_output):
+    llvm_base_name = os.path.basename(result_output).split('.')[0]
 
-    tmp_file_x86_BBs = "tmp_output.txt"  # TODO: Update the output path as required
+    tmp_file_x86_BBs = f"tmp_{llvm_base_name}output.txt"  # TODO: Update the output path as required
     # 1. Read LLVM IR File
     llvm_BB_map = read_llvm_ir_file_filtered(llvm_file_path)
 
@@ -51,8 +52,9 @@ def main(llvm_file_path, result_option, result_output):
     
     # 6. Invoke the Bash Script
     bash_script_path = "convertToHex.sh"
-    tmp_processed_hex_file = "tmp_opcodes.txt"
-    tmp_measure_input = "tmp_opcodes_unroll_factors.txt"
+    
+    tmp_processed_hex_file = f"tmp_{llvm_base_name}opcodes.txt"
+    tmp_measure_input = f"tmp_{llvm_base_name}opcodes_unroll_factors.txt"
     subprocess.run(['bash', bash_script_path, tmp_file_x86_BBs, tmp_processed_hex_file])
 
     # Ensure the opcodes.txt is created and not empty
@@ -77,7 +79,7 @@ def main(llvm_file_path, result_option, result_output):
     
     # 8. invoke measurement process to get throughput for each BB
     measurement_script_path = "../timing-harness/test"
-    tmp_measure_output = "tmp_measure_output.txt"
+    tmp_measure_output = f"tmp_{llvm_base_name}measure_output.txt"
     subprocess.run([measurement_script_path, tmp_measure_input, tmp_measure_output])
     # 9. merge measurement output with final output and result_list based on option debug/release
 

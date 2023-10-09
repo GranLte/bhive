@@ -11,7 +11,7 @@ LLVM_FILE="$1"
 OPTION="$2"
 
 # Optional injection pass, if provided
-INJECTION_PASS="${3:-../llvm-BB-mapping-pass/build/libInjectAsmComments.so}"
+INJECTION_PASS="${3:-/u9/z277zhu/granLte/bhive/llvm-BB-mapping-pass/build/lib/libInjectAsmComments.so}"
 
 # Check if the provided llvm file exists
 if [ ! -f "$LLVM_FILE" ]; then
@@ -35,13 +35,13 @@ if [ "$OPTION" == "RUN_FIRST" ]; then
     fi
     
     # Run the opt-14 -O3 optimization
-    opt-14 -O3 "$LLVM_FILE" -S -o optimized.ll
+    opt-14 -O3 "$LLVM_FILE" -S -o "$LLVM_FILE"
 
     # Run the injection pass
-    opt-14 -load-pass-plugin="$INJECTION_PASS" -passes="inject-asm-comments" optimized.ll -S -o ${LLVM_FILE}_O3_comment.ll
+    opt-14 -load-pass-plugin="$INJECTION_PASS" -passes="inject-asm-comments" $LLVM_FILE -S -o $LLVM_FILE
 
     # Set the file to be processed in the python script
-    PROCESSED_FILE=${LLVM_FILE}_O3_comment.ll
+    PROCESSED_FILE="$LLVM_FILE"
 else
     # Set the file to be processed in the python script as the input llvm file
     PROCESSED_FILE="$LLVM_FILE"
@@ -57,8 +57,3 @@ fi
 
 # Run the python script with the appropriate options
 python main.py "$PROCESSED_FILE" "$PYTHON_OPTION" "${LLVM_FILE}.perf"
-
-# Clean up the files if RUN_FIRST is chosen
-if [ "$OPTION" == "RUN_FIRST" ]; then
-    rm optimized*.ll
-fi

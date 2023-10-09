@@ -8,6 +8,41 @@ DEBUG = 1
 RELEASE = 2
 UPGRADE = 3
 
+def split_file(file_name, lines_per_file):
+    with open(file_name, 'r') as file:
+        lines = file.readlines()
+    
+    # Create a list to store the names of the small files for later use.
+    small_files = []
+    for i in range(0, len(lines), lines_per_file):
+        small_file_name = f"{file_name.rsplit('.', 1)[0]}_part_{i//lines_per_file}.txt"
+        with open(small_file_name, 'w') as small_file:
+            small_file.writelines(lines[i:i + lines_per_file])
+        small_files.append(small_file_name)
+    return small_files
+
+def process_and_merge_files(small_files, output_file_name, bash_script_path):
+    # Create a list to store the names of the processed files for later merging.
+    processed_files = []
+    
+    for i, small_file in enumerate(small_files):
+        print("input is " + small_file)
+        processed_file = f"{small_file.rsplit('.', 1)[0]}_processed.txt"
+        print("output is " + processed_file)
+        subprocess.run([bash_script_path, small_file, processed_file])
+        processed_files.append(processed_file)
+    
+    # Merge all processed files into a single file.
+    with open(output_file_name, 'w') as output_file:
+        for processed_file in processed_files:
+            with open(processed_file, 'r') as pf:
+                output_file.writelines(pf.readlines())
+            # Optionally: remove the processed file after merging it.
+            os.remove(processed_file)
+    
+    # Optionally: remove the small files after processing.
+    for small_file in small_files:
+        os.remove(small_file)
 
 def apply_upgrades(old_measurements, new_measurements):
     updated_measurements = {}
@@ -67,9 +102,9 @@ def main(llvm_file_path, result_option, result_output):
                 opcode_len = len(opcodes) // 2  # As 2 hex chars represent 1 byte
                 
                 # Determine the unroll factors based on the opcode length
-                if opcode_len < 100:
+                if opcode_len < 50:
                     unroll_factors = "100 200"
-                elif 100 <= opcode_len <= 200:
+                elif 50 <= opcode_len <= 100:
                     unroll_factors = "50 100"
                 else:
                     unroll_factors = "16 32"
@@ -80,7 +115,12 @@ def main(llvm_file_path, result_option, result_output):
     # 8. invoke measurement process to get throughput for each BB
     measurement_script_path = "../timing-harness/test"
     tmp_measure_output = f"tmp_{llvm_base_name}measure_output.txt"
-    subprocess.run([measurement_script_path, tmp_measure_input, tmp_measure_output])
+
+    # Split the original file into smaller files of 200 lines each.
+    small_files = split_file(tmp_measure_input, 200)
+
+    # Process the small files in separate subprocesses and merge the results into a single file.
+    process_and_merge_files(small_files, tmp_measure_output, measurement_script_path)
     # 9. merge measurement output with final output and result_list based on option debug/release
 
     old_measurements_lines = []
@@ -126,10 +166,11 @@ def main(llvm_file_path, result_option, result_output):
                 for line in measurement_lines:
                     elements = line.strip().split('  ')
                     bb_name = "BB_" + elements[0]
+                    hex_code = elements[1]
                     throughput = elements[2]
 
                     # Write to the result output
-                    f_result_output.write(f"{bb_name}, {throughput}\n")
+                    f_result_output.write(f"{bb_name},{hex_code},{throughput}\n")
         elif result_option == UPGRADE:
             with open(tmp_measure_output, 'r') as f_measurement_output:
                 # Reading all the lines of tmp_measure_output in a list
@@ -168,11 +209,11 @@ def main(llvm_file_path, result_option, result_output):
         tmp_measure_output
     ]
 
-    # for tmp_file in temporary_files:
-    #     try:
-    #         os.remove(tmp_file)
-    #     except FileNotFoundError:
-    #         print(f"Warning: Temporary file {tmp_file} not found for removal.")
+    for tmp_file in temporary_files:
+        try:
+            os.remove(tmp_file)
+        except FileNotFoundError:
+            print(f"Warning: Temporary file {tmp_file} not found for removal.")
 
 
     print("Processing completed.")

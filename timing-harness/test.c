@@ -19,7 +19,7 @@
 #include "harness.h"
 
 #define NUM_MEASUREMENTS 5
-#define SLEEP_TIME 10
+#define SLEEP_TIME 100
 
 #ifndef NDEBUG
 #define LOG(args...) printf(args)

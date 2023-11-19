@@ -1,4 +1,4 @@
-from x86_BB_reader import read_x86_BB
+from x86_BB_reader import read_x86_BB, pretty_print_dictionary
 import subprocess
 import os
 import argparse

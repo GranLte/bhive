@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if directory and option are provided
-if [[ -z "$1" || -z "$2" ]]; then
-    echo "Usage: $0 <source_directory> <option> [-jN]"
+if [[ -z "$1" ]]; then
+    echo "Usage: $0 <source_directory>"
     exit 1
 fi
 
@@ -12,22 +12,10 @@ if [[ ! -d "$1" ]]; then
     exit 1
 fi
 
-# Ensure the option is valid
-if [[ "$2" != "RUN_FIRST" && "$2" != "RUN_SECOND" && "$2" != "RUN_DEBUG" && "$2" != "RUN_UPGRADE" ]]; then
-    echo "Error: Invalid option. Choose from RUN_FIRST, RUN_SECOND, RUN_DEBUG, or RUN_UPGRADE."
-    exit 1
-fi
-
-# Ensure -jN flag is valid if provided
-if [[ -n "$3" && ! "$3" =~ ^-j[0-9]+$ ]]; then
-    echo "Error: Third parameter (if provided) must be -jN (e.g., -j4)"
-    exit 1
-fi
-
 # Define a function to run run_one.sh for a single file
 run_one_for_file() {
+    echo "start processing $1"
     file="$1"
-    option="$2"
     # Assume the output file has the same path but a different extension (.perf)
     # Adjust this line as per your actual output file naming convention
     output_file="${file}.perf"
@@ -45,7 +33,7 @@ run_one_for_file() {
     fi
     
     # Run run_one.sh for the file
-    ./run_one.sh "$file" "$option"
+    ./run_one.sh "$file"
     
     # Check if run_one.sh was successful
     if [[ $? -ne 0 ]]; then
@@ -57,5 +45,5 @@ run_one_for_file() {
 
 export -f run_one_for_file
 
-# Find all .ll files and pass them to run_one_for_file function in parallel
-find "$1" -type f -name "*.ll" -print0 | xargs -0 -P "${3#-j}" -n 1 -I {} bash -c 'run_one_for_file "$@"' _ {} "$2"
+# Find all .bc files and pass them to run_one_for_file function
+find "$1" -type f -name "*.bc" -print0 | xargs -0 -P 1 -n 1 -I {} bash -c 'run_one_for_file "$@"' _ {}

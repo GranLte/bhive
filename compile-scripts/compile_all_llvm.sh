@@ -34,8 +34,6 @@ compile_file() {
         -I/u9/z277zhu/granLte/llvm-project/llvm/include \
         -I/u9/z277zhu/granLte/llvm-project/build/include \
          -emit-llvm -o "$out_file" "$src_file"
-    
-    opt-14 -O3 "$out_file" -S -o "$out_file"
 
     # Check if clang++-14 command was successful
     if [[ $? -ne 0 ]]; then

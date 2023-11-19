@@ -1,17 +1,13 @@
 #!/bin/bash
 
 # Check if the correct number of arguments is provided
-if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <llvm_file.ll> <option> [injection_pass]"
+if [ "$#" -lt 1 ]; then
+    echo "Usage: $0 <llvm_file.bc>"
     exit 1
 fi
 
 # Assign the arguments to variables
 LLVM_FILE="$1"
-OPTION="$2"
-
-# Optional injection pass, if provided
-INJECTION_PASS="${3:-/u9/z277zhu/granLte/bhive/llvm-BB-mapping-pass/build/lib/libInjectAsmComments.so}"
 
 # Check if the provided llvm file exists
 if [ ! -f "$LLVM_FILE" ]; then
@@ -19,41 +15,27 @@ if [ ! -f "$LLVM_FILE" ]; then
     exit 1
 fi
 
-# Check if the option is valid
-if [ "$OPTION" != "RUN_FIRST" ] && [ "$OPTION" != "RUN_SECOND" ] && [ "$OPTION" != "RUN_DEBUG" ] && [ "$OPTION" != "RUN_UPGRADE" ]; then
-    echo "Error: Invalid option. Choose from RUN_FIRST, RUN_SECOND, RUN_DEBUG, or RUN_UPGRADE."
+# Check if the provided llvm file is a .bc file
+if [[ ! "$LLVM_FILE" =~ \.bc$ ]]; then
+    echo "Error: File $LLVM_FILE is not a .bc file!"
     exit 1
 fi
 
-# If RUN_FIRST is chosen
-if [ "$OPTION" == "RUN_FIRST" ]; then
-    
-    # Check if the injection pass argument is provided
-    if [ -z "$INJECTION_PASS" ]; then
-        echo "Error: Injection pass argument is required for RUN_FIRST option."
-        exit 1
-    fi
-    
-    # Run the opt-14 -O3 optimization
-    opt-14 -O3 "$LLVM_FILE" -S -o "$LLVM_FILE"
 
-    # Run the injection pass
-    opt-14 -load-pass-plugin="$INJECTION_PASS" -passes="inject-asm-comments" $LLVM_FILE -S -o $LLVM_FILE
+# Run the opt-18 -O3 optimization
+echo "Running opt-18 -O3"
+/u9/z277zhu/llvm-18/llvm-project-2a1f1b5fde0a2e03f94fa2cb5c7765d405fda0de/build/bin/opt -O3 "$LLVM_FILE" -o "$LLVM_FILE"
+echo "Done running opt-18 -O3"
 
-    # Set the file to be processed in the python script
-    PROCESSED_FILE="$LLVM_FILE"
-else
-    # Set the file to be processed in the python script as the input llvm file
-    PROCESSED_FILE="$LLVM_FILE"
-fi
+# Run the injection pass
+echo "Running opt-18 rename"
+/u9/z277zhu/llvm-18/llvm-project-2a1f1b5fde0a2e03f94fa2cb5c7765d405fda0de/build/bin/opt -passes="rename-unique-bb" "$LLVM_FILE" -o "$LLVM_FILE"
+echo "Done running opt-18 rename"
 
-# If RUN_SECOND or RUN_FIRST is chosen, set python option to RELEASE
-if [ "$OPTION" == "RUN_SECOND" ] || [ "$OPTION" == "RUN_FIRST" ]; then
-    PYTHON_OPTION="RELEASE"
-else
-    # Otherwise, map the bash script option to the python script option
-    PYTHON_OPTION="${OPTION#RUN_}"
-fi
+# Compile to hacked assembly
+echo "Running llc-18"
+/u9/z277zhu/llvm-18/llvm-project-2a1f1b5fde0a2e03f94fa2cb5c7765d405fda0de/build/bin/llc -O0 "$LLVM_FILE"  -o "$LLVM_FILE.s"
+echo "Done running llc-18"
 
 # Run the python script with the appropriate options
-python main.py "$PROCESSED_FILE" "$PYTHON_OPTION" "${LLVM_FILE}.perf"
+python main.py "$LLVM_FILE.s" "${LLVM_FILE}.perf"

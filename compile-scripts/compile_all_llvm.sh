@@ -23,17 +23,21 @@ compile_file() {
     src_file="$1"
     out_file="${src_file%.cpp}.bc"
     
-    # Check if out_file exists; if it does, skip compilation
-    if [[ -e "$out_file" ]]; then
-        echo "Skipped: $out_file"
-        return 0
-    fi
+    # # Check if out_file exists; if it does, skip compilation
+    # if [[ -e "$out_file" ]]; then
+    #     echo "Skipped: $out_file"
+    #     return 0
+    # fi
 
     # Compile the source file and generate the .ll file
-    clang++-14 --std=c++17 \
-        -I/u9/z277zhu/granLte/llvm-project/llvm/include \
-        -I/u9/z277zhu/granLte/llvm-project/build/include \
-         -emit-llvm -o "$out_file" "$src_file"
+    # TODO: change
+     clang++-14 --std=c++17         -I/u9/z277zhu/granLte/llvm-project/llvm/include      \
+    -I/u9/z277zhu/granLte/llvm-project/build/include  \
+    -O3 -emit-llvm -S -o "$out_file" "$src_file"
+
+    opt-14 -load-pass-plugin="/u9/z277zhu/granLte/bhive/llvm-BB-mapping-pass/build/lib/libInjectAsmComments.so" -passes="inject-asm-comments" "$out_file" -S -o "$out_file"
+
+    llvm-as-14 "$out_file" -o "$out_file"
 
     # Check if clang++-14 command was successful
     if [[ $? -ne 0 ]]; then

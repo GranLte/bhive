@@ -171,16 +171,19 @@ int main(int argc, char **argv){
   // Allocate shared memory for the test, splitting it into 3 pages:
   // 1st page is for the test code, rest for recording results.
   int shm_fd = create_shm_fd("shm-path");
+  int cnt = 0;
+  int failed_cnt = 0;
   
 
   while (fgets(line, sizeof(line), input_file)) {
-
+        cnt++;
+        if (cnt % 1000 == 0) shm_fd = create_shm_fd("shm-path");
         unsigned int BB_index = atoi(strtok(line, " "));
         char *code_hex = strtok(NULL, " ");
         unsigned int unroll_factor1 = atoi(strtok(NULL, " "));
         unsigned int unroll_factor2 = atoi(strtok(NULL, "\n"));
 
-        if (code_hex[0] == '0') {
+        if (code_hex[0] == '0' && strlen(code_hex) == 1) {
           fprintf(output_file, "%d  %s  %f  %ld\n", BB_index, code_hex, 0.0, 0);
           usleep(SLEEP_TIME);
           continue;
@@ -226,6 +229,17 @@ int main(int argc, char **argv){
           }
         }
         LOG("result throughput is %f failed %ld times \n", min_inverse_throughput, failed_attempts);
+        if (min_inverse_throughput == -1.0f || min_inverse_throughput == 0.01) {
+          failed_cnt++;
+        } else {
+          failed_cnt = 0;
+        }
+
+        // if (failed_cnt > 10){
+        //   failed_cnt = 0;
+        //   sleep(3);
+        //   shm_fd = create_shm_fd("shm-path");
+        // }
         // Instead of using LOG, write the results directly to the output file
         fprintf(output_file, "%d  %s  %f  %ld\n", BB_index, code_hex, min_inverse_throughput, failed_attempts);
 

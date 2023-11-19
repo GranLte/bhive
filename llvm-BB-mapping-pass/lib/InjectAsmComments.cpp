@@ -24,23 +24,7 @@ bool InjectAsmComments::runOnModule(Module &M) {
     for (BasicBlock &BB : F) {
         if (Visited.count(&BB)) continue;
         Visited.insert(&BB);
-        // Assign a name to the basic block if it doesn't have one
-
         BB.setName("BB_" + Twine(BBNum++));  // e.g., BB_0, BB_1, BB_2, ...
-
-        IRBuilder<> Builder(&BB);
-
-        // Move the insertion point to the start of the basic block
-        Builder.SetInsertPoint(&BB,  BB.getFirstInsertionPt());
-
-        // Create the inline assembly type and function
-        // Create the comment string
-        std::string CommentStr = "# LLVM BB: " + BB.getName().str();
-        FunctionType *AsmFT = FunctionType::get(Builder.getVoidTy(), false);
-        InlineAsm *IA = InlineAsm::get(AsmFT, CommentStr, "", true);
-
-        // Insert the comment as inline assembly
-        Builder.CreateCall(IA);
         }
   }
   return false;
